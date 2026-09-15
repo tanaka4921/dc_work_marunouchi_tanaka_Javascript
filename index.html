@@ -39,151 +39,176 @@
             <p class="credit"><small>音源素材：<a href = "https://maou.audio/" target = "_blank" rel = "noopener noreferrer">魔王魂</a></small></p>
         </footer>
         <script>
-            const autoPlay = document.getElementById('auto-play');
-            const playSupport = document.getElementById('play-support');
-            const songSelect = document.getElementById('song-select');
-            let songName = document.getElementById('song-name');
-            let soundName = document.getElementById('sound-name');
+            const autoPlayButton = document.getElementById('auto-play');
+            const playSupportButton = document.getElementById('play-support');
+            const songSelectList = document.getElementById('song-select');
+            const songNameDisplay = document.getElementById('song-name');
+            const soundNameDisplay = document.getElementById('sound-name');
             const pianoKeyboard = document.getElementById('piano-keyboard');
-            const keyDO = document.getElementById('key-do');
-            const keyRe = document.getElementById('key-re');
-            const keyMi = document.getElementById('key-mi');
-            const keyFa = document.getElementById('key-fa');
-            const keySo = document.getElementById('key-so');
-            const keyRa = document.getElementById('key-ra');
-            const keySi = document.getElementById('key-si');
-            const highKeyDo = document.getElementById('highkey-do');
+            const doKey = document.getElementById('key-do');
+            const reKey = document.getElementById('key-re');
+            const miKey = document.getElementById('key-mi');
+            const faKey = document.getElementById('key-fa');
+            const sokey = document.getElementById('key-so');
+            const rakey = document.getElementById('key-ra');
+            const sikey = document.getElementById('key-si');
+            const highDoKey = document.getElementById('highkey-do');
+            
+            //音のデータ
+            const pianoSounds = {
+                'key-do':  new Audio('piano-sound/maou_se_inst_piano1_1do.mp3'),
+                'key-re':  new Audio('piano-sound/maou_se_inst_piano1_2re.mp3'),
+                'key-mi':  new Audio('piano-sound/maou_se_inst_piano1_3mi.mp3'),
+                'key-fa':  new Audio('piano-sound/maou_se_inst_piano1_4fa.mp3'),
+                'key-so':  new Audio('piano-sound/maou_se_inst_piano1_5so.mp3'),
+                'key-ra':  new Audio('piano-sound/maou_se_inst_piano1_6ra.mp3'),
+                'key-si':  new Audio('piano-sound/maou_se_inst_piano1_7si.mp3'),
+                'highkey-do':  new Audio('piano-sound/maou_se_inst_piano1_8do.mp3')
+            };
             
             //選択された音階の名前を表示する
             let timerId = null;
-            function displaySoundName(keyElement){
-                if(timerId !== null){
+            function showSoundName(keyButton){
+                if (timerId !== null){
                     clearTimeout(timerId)
                 }
-                if(keyElement === null){
-                    soundName.textContent = "";
+                if (keyButton === null){
+                    soundNameDisplay.textContent = "";
                     return;
                 }
-                soundName.textContent = keyElement.textContent;
+                soundNameDisplay.textContent = keyButton.textContent;
                 timerId = setTimeout(()=>{
-                    soundName.textContent = "";
+                    soundNameDisplay.textContent = "";
                     timerId = null;
                 },1000);
             }
 
             //選択された音を再生する
-            function playSound(keyElement){
-                if(keyElement === null){
+            function playKeySound(keyButton){
+                if (keyButton === null){
                     return;
                 }
-                const audio = audioMap[keyElement.id]
-                audio.currentTime = 0;
-                audio.play();
+                const pianoSound = pianoSounds[keyButton.id]
+                pianoSound.currentTime = 0;
+                pianoSound.play();
             }
+            
+            let autoPlaytimerIds = [];
+            let autoPlayEndtimerId = null; 
+            let isAutoPlaying = false; 
 
-            //自動演奏開始の関数
-            let playingTimers = [];
-            let endTimer ; 
+            //自動演奏終了時の表示やボタンを元に戻す
+            function finishAutoPlay(){ 
+                isAutoPlaying = false;
+                autoPlaytimerIds = [];
+                autoPlayEndtimerId = null;
+                autoPlayButton.textContent = "自動演奏";
+                songNameDisplay.textContent = "";
+                pianoKeyboard.disabled = false;
+                playSupportButton.disabled = false;
+            }
+            
+            //自動演奏を開始する
             function startAutoPlay(){
-                playingTimers = [];
+                autoPlaytimerIds = [];
+                isAutoPlaying = true;
+                autoPlayButton.textContent = "演奏中止";
+                playSupportButton.disabled = true;
+                pianoKeyboard.disabled = true;
                 const randomScore = allScores[Math.floor(Math.random()*allScores.length)];
-                songName.textContent = `自動演奏中です。曲名：${randomScore.title}`;
-                randomScore.data.forEach(score=>{
+                songNameDisplay.textContent = `自動演奏中です。曲名：${randomScore.title}`;
+                randomScore.data.forEach(note=>{
                     const playingTimer = setTimeout(()=>{
-                        displaySoundName(score.key);
-                        playSound(score.key);
-                    },score.time);
-                    playingTimers.push(playingTimer);
+                        showSoundName(note.key);
+                        playKeySound(note.key);
+                    },note.time);
+                    autoPlaytimerIds.push(playingTimer);
                 })
-                endTimer = setTimeout(()=>{
-                    playStatus = false;
-                    autoPlay.textContent = "自動演奏";
-                    songName.textContent = "";
-                    pianoKeyboard.disabled = false;
+                autoPlayEndtimerId = setTimeout(()=>{
+                    finishAutoPlay();
                 },randomScore.endTime)
             }
 
-            //自動演奏停止
+            //自動演奏停を停止する
             function stopAutoPlay(){
-                playingTimers.forEach(playingTimer=>{
+                autoPlaytimerIds.forEach(playingTimer=>{
                     clearTimeout(playingTimer);
                 });
-                clearTimeout(endTimer);
+                clearTimeout(autoPlayEndtimerId);
+                finishAutoPlay();
             }
 
-            //演奏補助を始める関数
-            let currentScore = null;
-            let currentIndex = 0;
-            function startSupportPlay(seletetedScore){
-                currentIndex = 0;
-                currentScore = seletetedScore;
+            //演奏補助を開始する
+            let supportScore = null;
+            let supportNoteIndex = 0;
+            function startSupportPlay(selectedScore){
+                supportNoteIndex = 0;
+                supportScore = selectedScore;
+                songNameDisplay.textContent = `演奏補助中 曲名：${supportScore.title}`;
+                playSupportButton.textContent = "補助中止";
                 highlightNextKey();
             }
 
+            //演奏補助を終了する
+            function finishSupportPlay(){
+                if(supportScore !== null){
+                    const currentNote = supportScore.data[supportNoteIndex];
+                    if(currentNote !== undefined && currentNote.key !== null){
+                        currentNote.key.classList.remove('highlight');
+                    } 
+                }
+                supportScore = null;
+                supportNoteIndex = 0;
+                playSupportButton.textContent = "演奏補助";
+                songNameDisplay.textContent = "";
+            }
             //演奏補助内で次のキーを教えてくれる関数
             function highlightNextKey(){
-                if(currentIndex >= currentScore.data.length){
-                    songName.textContent = "";
-                    playSupport.textContent = "演奏補助";
-                    currentScore = null;
+                if (supportNoteIndex >= supportScore.data.length){
+                    finishSupportPlay();
                     return;
                 }
-                const nextKey = currentScore.data[currentIndex].key;
-                if(nextKey !== null){
+                const nextKey = supportScore.data[supportNoteIndex].key;
+                if (nextKey !== null){
                     nextKey.classList.add("highlight");
                 }
-                if(nextKey === null){
-                    currentIndex++;
+                if (nextKey === null){
+                    supportNoteIndex++;
                     highlightNextKey();
                 }
             }
             
-            //自動演奏クリック時の動作      
-            let playStatus = false;      
-            autoPlay.addEventListener('click',(e)=>{
-                if(currentScore !== null){
-                    currentScore.data[currentIndex].key.classList.remove('highlight');
-                    currentScore = null;
-                    playSupport.textContent = "演奏補助";
+            //自動演奏クリック時の動作                
+            autoPlayButton.addEventListener('click',(e)=>{
+                if (supportScore !== null){
+                    finishSupportPlay();
                 }
-                if(playStatus === false){
-                    startAutoPlay();
-                    playStatus = true;
-                    autoPlay.textContent = "演奏中止";
-                    playSupport.disabled = true;
-                    pianoKeyboard.disabled = true;
-                }
-                else if(playStatus === true){
-                    stopAutoPlay();
-                    playStatus = false;
-                    autoPlay.textContent = "自動演奏";
-                    songName.textContent = "";
-                    pianoKeyboard.disabled = false;
-                    playSupport.disabled = false;
+                if (isAutoPlaying === false){
+                    startAutoPlay();                
+                } else if (isAutoPlaying === true){
+                    stopAutoPlay();                  
                 }
             });
 
             //演奏補助のボタンを押したときの動作
-            playSupport.addEventListener('click',()=>{
-                if(currentScore === null){
-                    songSelect.classList.toggle('open');
-                }else{
-                    currentScore.data[currentIndex].key.classList.remove('highlight');
-                    currentScore = null;
-                    playSupport.textContent = "演奏補助";
-                    songName.textContent = "";
+            playSupportButton.addEventListener('click',()=>{
+                if (supportScore === null){
+                    songSelectList.classList.toggle('open');
+                } else {
+                   finishSupportPlay();
                 }
             });
 
             //クリックされたときの動作
             pianoKeyboard.addEventListener('click',(e)=>{
-                if(e.target.tagName === "BUTTON"){
-                    displaySoundName(e.target);
-                    playSound(e.target);
+                const clickedElement = event.target;
+                if (clickedElement instanceof HTMLButtonElement){
+                    showSoundName(e.target);
+                    playKeySound(e.target);
                     //演奏補助のときに指定の鍵盤を押したときの動作
-                    if(currentScore !== null && e.target === currentScore.data[currentIndex].key){
-                        e.target.classList.remove("highlight");
-                        currentIndex++;
+                    if (supportScore !== null && clickedElement === supportScore.data[supportNoteIndex].key){
+                        clickedElement.classList.remove("highlight");
+                        supportNoteIndex++;
                         highlightNextKey();
                     }
                 }
@@ -191,154 +216,154 @@
 
             //きらきら星の楽譜データ
             const twinkleStarScore = [
-            { key: keyDO, time: 0     },
+            { key: doKey, time: 0     },
             { key: null,  time: 500   },
-            { key: keyDO, time: 1000  },
+            { key: doKey, time: 1000  },
             { key: null,  time: 1500  },
-            { key: keySo, time: 2000  },
+            { key: sokey, time: 2000  },
             { key: null,  time: 2500  },
-            { key: keySo, time: 3000  },
+            { key: sokey, time: 3000  },
             { key: null,  time: 3500  },
 
-            { key: keyRa, time: 4000  },
+            { key: rakey, time: 4000  },
             { key: null,  time: 4500  },
-            { key: keyRa, time: 5000  },
+            { key: rakey, time: 5000  },
             { key: null,  time: 5500  },
-            { key: keySo, time: 6000  },
+            { key: sokey, time: 6000  },
 
-            { key: keyFa, time: 8000  },
+            { key: faKey, time: 8000  },
             { key: null,  time: 8500  },
-            { key: keyFa, time: 9000  },
+            { key: faKey, time: 9000  },
             { key: null,  time: 9500  },
-            { key: keyMi, time: 10000 },
+            { key: miKey, time: 10000 },
             { key: null,  time: 10500 },
-            { key: keyMi, time: 11000 },
+            { key: miKey, time: 11000 },
             { key: null,  time: 11500 },
 
-            { key: keyRe, time: 12000 },
+            { key: reKey, time: 12000 },
             { key: null,  time: 12500 },
-            { key: keyRe, time: 13000 },
+            { key: reKey, time: 13000 },
             { key: null,  time: 13500 },
-            { key: keyDO, time: 14000 },
+            { key: doKey, time: 14000 },
 
-            { key: keySo, time: 16000 },
+            { key: sokey, time: 16000 },
             { key: null,  time: 16500 },
-            { key: keySo, time: 17000 },
+            { key: sokey, time: 17000 },
             { key: null,  time: 17500 },
-            { key: keyFa, time: 18000 },
+            { key: faKey, time: 18000 },
             { key: null,  time: 18500 },
-            { key: keyFa, time: 19000 },
+            { key: faKey, time: 19000 },
             { key: null,  time: 19500 },
 
-            { key: keyMi, time: 20000 },
+            { key: miKey, time: 20000 },
             { key: null,  time: 20500 },
-            { key: keyMi, time: 21000 },
+            { key: miKey, time: 21000 },
             { key: null,  time: 21500 },
-            { key: keyRe, time: 22000 },
+            { key: reKey, time: 22000 },
 
-            { key: keySo, time: 24000 },
+            { key: sokey, time: 24000 },
             { key: null,  time: 24500 },
-            { key: keySo, time: 25000 },
+            { key: sokey, time: 25000 },
             { key: null,  time: 25500 },
-            { key: keyFa, time: 26000 },
+            { key: faKey, time: 26000 },
             { key: null,  time: 26500 },
-            { key: keyFa, time: 27000 },
+            { key: faKey, time: 27000 },
             { key: null,  time: 27500 },
 
-            { key: keyMi, time: 28000 },
+            { key: miKey, time: 28000 },
             { key: null,  time: 28500 },
-            { key: keyMi, time: 29000 },
+            { key: miKey, time: 29000 },
             { key: null,  time: 29500 },
-            { key: keyRe, time: 30000 },
+            { key: reKey, time: 30000 },
 
-            { key: keyDO, time: 32000 },
+            { key: doKey, time: 32000 },
             { key: null,  time: 32500 },
-            { key: keyDO, time: 33000 },
+            { key: doKey, time: 33000 },
             { key: null,  time: 33500 },
-            { key: keySo, time: 34000 },
+            { key: sokey, time: 34000 },
             { key: null,  time: 34500 },
-            { key: keySo, time: 35000 },
+            { key: sokey, time: 35000 },
             { key: null,  time: 35500 },
 
-            { key: keyRa, time: 36000 },
+            { key: rakey, time: 36000 },
             { key: null,  time: 36500 },
-            { key: keyRa, time: 37000 },
+            { key: rakey, time: 37000 },
             { key: null,  time: 37500 },
-            { key: keySo, time: 38000 },
+            { key: sokey, time: 38000 },
 
-            { key: keyFa, time: 40000 },
+            { key: faKey, time: 40000 },
             { key: null,  time: 40500 },
-            { key: keyFa, time: 41000 },
+            { key: faKey, time: 41000 },
             { key: null,  time: 41500 },
-            { key: keyMi, time: 42000 },
+            { key: miKey, time: 42000 },
             { key: null,  time: 42500 },
-            { key: keyMi, time: 43000 },
+            { key: miKey, time: 43000 },
             { key: null,  time: 43500 },
 
-            { key: keyRe, time: 44000 },
+            { key: reKey, time: 44000 },
             { key: null,  time: 44500 },
-            { key: keyRe, time: 45000 },
+            { key: reKey, time: 45000 },
             { key: null,  time: 45500 },
-            { key: keyDO, time: 46000 },
+            { key: doKey, time: 46000 },
             { key: null,  time: 50000 }
             ];
             
             //チューリップの楽譜データ
             const tulipScore = [
-            { key: keyDO, time: 0     },
-            { key: keyRe, time: 500   },
-            { key: keyMi, time: 1000  },
-            { key: keyDO, time: 2000  },
-            { key: keyRe, time: 2500  },
-            { key: keyMi, time: 3000  },
+            { key: doKey, time: 0     },
+            { key: reKey, time: 500   },
+            { key: miKey, time: 1000  },
+            { key: doKey, time: 2000  },
+            { key: reKey, time: 2500  },
+            { key: miKey, time: 3000  },
 
-            { key: keySo, time: 4000  },
-            { key: keyMi, time: 4500  },
-            { key: keyRe, time: 5000  },
-            { key: keyDO, time: 5500  },
-            { key: keyRe, time: 6000  },
-            { key: keyMi, time: 6500  },
-            { key: keyRe, time: 7000  },
+            { key: sokey, time: 4000  },
+            { key: miKey, time: 4500  },
+            { key: reKey, time: 5000  },
+            { key: doKey, time: 5500  },
+            { key: reKey, time: 6000  },
+            { key: miKey, time: 6500  },
+            { key: reKey, time: 7000  },
 
-            { key: keyDO, time: 8000  },
-            { key: keyRe, time: 8500  },
-            { key: keyMi, time: 9000  },
-            { key: keyDO, time: 10000 },
-            { key: keyRe, time: 10500 },
-            { key: keyMi, time: 11000 },
+            { key: doKey, time: 8000  },
+            { key: reKey, time: 8500  },
+            { key: miKey, time: 9000  },
+            { key: doKey, time: 10000 },
+            { key: reKey, time: 10500 },
+            { key: miKey, time: 11000 },
             
-            { key: keySo, time: 12000 },
-            { key: keyMi, time: 12500 },
-            { key: keyRe, time: 13000 },
-            { key: keyDO, time: 13500 },
-            { key: keyRe, time: 14000 },
-            { key: keyMi, time: 14500 },
-            { key: keyDO, time: 15000 },
+            { key: sokey, time: 12000 },
+            { key: miKey, time: 12500 },
+            { key: reKey, time: 13000 },
+            { key: doKey, time: 13500 },
+            { key: reKey, time: 14000 },
+            { key: miKey, time: 14500 },
+            { key: doKey, time: 15000 },
 
-            { key: keySo, time: 16000 },
+            { key: sokey, time: 16000 },
             { key: null,  time: 16250 },
-            { key: keySo, time: 16500 },
+            { key: sokey, time: 16500 },
             { key: null,  time: 16750 },
-            { key: keyMi, time: 17000 },
+            { key: miKey, time: 17000 },
             { key: null,  time: 17250 },
-            { key: keySo, time: 17500 },
+            { key: sokey, time: 17500 },
             { key: null,  time: 17750 },
 
-            { key: keyRa, time: 18000 },
+            { key: rakey, time: 18000 },
             { key: null,  time: 18250 },
-            { key: keyRa, time: 18500 },
+            { key: rakey, time: 18500 },
             { key: null,  time: 18750 },
-            { key: keySo, time: 19000 },
+            { key: sokey, time: 19000 },
 
-            { key: keyMi, time: 20000 },
+            { key: miKey, time: 20000 },
             { key: null,  time: 20250 },
-            { key: keyMi, time: 20500 },
+            { key: miKey, time: 20500 },
             { key: null,  time: 20750 },
-            { key: keyRe, time: 21000 },
+            { key: reKey, time: 21000 },
             { key: null,  time: 21250 },
-            { key: keyRe, time: 21500 },
+            { key: reKey, time: 21500 },
             { key: null,  time: 21750 },
-            { key: keyDO, time: 22000 },
+            { key: doKey, time: 22000 },
             { key: null,  time: 26000 }
             ];
 
@@ -353,29 +378,15 @@
                 allScores.forEach(score=>{
                     const li = document.createElement('li');
                     li.textContent = score.title;
-                    songSelect.appendChild(li);
+                    songSelectList.appendChild(li);
                     //演奏補助の曲を選んだときの動作
                     li.addEventListener('click',()=>{
                         startSupportPlay(score);
-                        songSelect.classList.remove('open');
-                        songName.textContent = `演奏補助中 曲名：${currentScore.title}`;
-                        playSupport.textContent = "補助中止";
+                        songSelectList.classList.remove('open');                      
                     })
                 })
             })();
-
-            //音のデータ
-            const audioMap = {
-                'key-do':  new Audio('piano-sound/maou_se_inst_piano1_1do.mp3'),
-                'key-re':  new Audio('piano-sound/maou_se_inst_piano1_2re.mp3'),
-                'key-mi':  new Audio('piano-sound/maou_se_inst_piano1_3mi.mp3'),
-                'key-fa':  new Audio('piano-sound/maou_se_inst_piano1_4fa.mp3'),
-                'key-so':  new Audio('piano-sound/maou_se_inst_piano1_5so.mp3'),
-                'key-ra':  new Audio('piano-sound/maou_se_inst_piano1_6ra.mp3'),
-                'key-si':  new Audio('piano-sound/maou_se_inst_piano1_7si.mp3'),
-                'highkey-do':  new Audio('piano-sound/maou_se_inst_piano1_8do.mp3')
-            };
-            
+ 
         </script>
     </body>
 </html>
